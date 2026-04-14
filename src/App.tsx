@@ -576,7 +576,12 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
 
   if (!isAuthenticated) {
     return (
-      <div className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center"
+      >
         <h2 className="text-2xl font-bold mb-6">Login Admin</h2>
         <input 
           type="password" 
@@ -589,12 +594,17 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
         <button onClick={handleLogin} className="w-full py-3 rounded-xl bg-cyan-500 text-black font-semibold">
           Masuk
         </button>
-      </div>
+      </motion.div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+      className="max-w-6xl mx-auto"
+    >
        <h2 className="text-3xl font-bold mb-8">Panel Admin</h2>
        <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
          <table className="w-full text-left border-collapse min-w-[800px]">
@@ -643,6 +653,6 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
            </tbody>
          </table>
        </div>
-    </div>
+    </motion.div>
   )
 }
