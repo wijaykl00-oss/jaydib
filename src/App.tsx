@@ -115,6 +115,17 @@ export default function App() {
     }
   };
 
+  const [secretCount, setSecretCount] = useState(0);
+
+  const handleSecretClick = () => {
+    const newCount = secretCount + 1;
+    setSecretCount(newCount);
+    if (newCount >= 5) {
+      setActiveTab('admin');
+      setSecretCount(0);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
       {/* Background Effects */}
@@ -128,12 +139,13 @@ export default function App() {
           <motion.div 
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="text-xl sm:text-2xl font-bold tracking-tighter flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start"
+            onClick={handleSecretClick}
+            className="text-xl sm:text-2xl font-bold tracking-tighter flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-start cursor-pointer select-none"
           >
-            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center">
+            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center pointer-events-none">
               <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-950" />
             </div>
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 glow-text">
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 glow-text pointer-events-none">
               Jurji Store
             </span>
           </motion.div>
@@ -143,7 +155,6 @@ export default function App() {
               { id: 'home', label: 'Beranda' },
               { id: 'pricing', label: 'Produk' },
               { id: 'transactions', label: 'Riwayat Pembelian' },
-              { id: 'admin', label: 'Admin' },
             ].map((item) => (
               <motion.button
                 key={item.id}
@@ -374,16 +385,16 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-zinc-900 border border-white/10 p-6 sm:p-8 rounded-2xl w-full max-w-md relative max-h-[90vh] overflow-y-auto"
+              className="bg-zinc-900 border border-white/10 p-5 sm:p-8 rounded-2xl w-full max-w-md relative max-h-[90vh] overflow-y-auto"
             >
               <button 
                 onClick={() => setSelectedProduct(null)} 
-                className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-black/50 p-1 rounded-full aspect-square flex items-center justify-center"
+                className="absolute top-3 right-3 z-50 text-zinc-400 hover:text-white bg-black/80 hover:bg-black/100 p-2 rounded-full aspect-square flex items-center justify-center shadow-lg backdrop-blur-md"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
 
-              <h3 className="text-2xl font-bold mb-6 pr-8 text-cyan-400">{selectedProduct.category}</h3>
+              <h3 className="text-xl sm:text-2xl font-bold mb-6 pr-12 text-cyan-400">{selectedProduct.category}</h3>
               
               {modalStep === 1 && (
                 <div className="space-y-4">
@@ -570,8 +581,8 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
   const [error, setError] = useState('');
 
   const handleLogin = () => {
-    if (pin === '123456') setIsAuthenticated(true);
-    else setError('PIN Salah!');
+    if (pin === 'Zerotoher0') setIsAuthenticated(true);
+    else setError('Password Salah!');
   };
 
   if (!isAuthenticated) {
@@ -587,8 +598,8 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
           type="password" 
           value={pin}
           onChange={e => setPin(e.target.value)}
-          className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white mb-4 focus:outline-none focus:border-cyan-500/50 text-center tracking-[1em]"
-          placeholder="PIN"
+          className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white mb-4 focus:outline-none focus:border-cyan-500/50 text-center tracking-widest"
+          placeholder="Password"
         />
         {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
         <button onClick={handleLogin} className="w-full py-3 rounded-xl bg-cyan-500 text-black font-semibold">
