@@ -187,11 +187,11 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
     if (!selectedProduct) return;
     const total = selectedProduct.price * formData.qty;
     const newTrx: Transaction = {
-      id: \`TRX-\${Math.floor(10000 + Math.random() * 90000)}\`,
+      id: `TRX-${Math.floor(10000 + Math.random() * 90000)}`,
       name: formData.name,
       product: selectedProduct.name,
       qty: formData.qty,
-      amount: \`Rp \${total.toLocaleString('id-ID')}\`,
+      amount: `Rp ${total.toLocaleString('id-ID')}`,
       date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
       status: 'Sukses'
     };
