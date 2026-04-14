@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, Activity, Zap, ChevronRight, X } from 'lucide-react';
 import QrisImg from './assets/qrisss.png';
+import { supabase } from './supabase';
+import emailjs from '@emailjs/browser';
 
 type Product = {
   id: number;
@@ -35,6 +37,7 @@ export type Transaction = {
   amount: string;
   date: string;
   status: string;
+  proof_url?: string;
 };
 
 const initialTransactions: Transaction[] = [];
@@ -42,9 +45,74 @@ const initialTransactions: Transaction[] = [];
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const addTransaction = (trx: Transaction) => {
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    if (!supabase) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (error) throw error;
+      if (data) setTransactions(data as Transaction[]);
+    } catch (err) {
+      console.error('Error fetching transactions:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addTransaction = async (trx: Transaction) => {
     setTransactions([trx, ...transactions]);
+
+    // Simpan ke Supabase (jika sudah disetting)
+    if (supabase) {
+      try {
+        await supabase.from('transactions').insert([trx]);
+      } catch (err) {
+        console.error('Failed to save tracking info to database:', err);
+      }
+    }
+
+    // Auto WhatsApp
+    const waNumber = '6285124935573'; // GANTI dengan nomor WA Anda
+    const waMessage = `Halo Jurji Store, saya telah melakukan pembayaran.%0A%0A*Detail Pesanan:*%0A- ID: ${trx.id}%0A- Nama: ${trx.name}%0A- Produk: ${trx.product}%0A- Jumlah: ${trx.qty}%0A- Total: ${trx.amount}%0A%0A*Bukti:* ${trx.proof_url ? trx.proof_url : 'Telah diupload di website'}`;
+    window.open(`https://wa.me/${waNumber}?text=${waMessage}`, '_blank');
+
+    // Auto EmailJS (jika sudah disetting di .env)
+    const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+    const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+    const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+    if (serviceId && templateId && publicKey) {
+      try {
+        await emailjs.send(
+          serviceId,
+          templateId,
+          {
+            to_email: 'ak123k09@gmail.com',
+            trx_id: trx.id,
+            trx_name: trx.name,
+            trx_product: trx.product,
+            trx_qty: trx.qty,
+            trx_amount: trx.amount,
+          },
+          publicKey
+        );
+      } catch (err) {
+        console.error('Failed to send email:', err);
+      }
+    }
   };
 
   return (
@@ -75,6 +143,7 @@ export default function App() {
               { id: 'home', label: 'Beranda' },
               { id: 'pricing', label: 'Produk' },
               { id: 'transactions', label: 'Riwayat Pembelian' },
+              { id: 'admin', label: 'Admin' },
             ].map((item) => (
               <motion.button
                 key={item.id}
@@ -105,6 +174,7 @@ export default function App() {
           {activeTab === 'home' && <HomeView key="home" setActiveTab={setActiveTab} />}
           {activeTab === 'pricing' && <PricingView key="pricing" addTransaction={addTransaction} setActiveTab={setActiveTab} />}
           {activeTab === 'transactions' && <TransactionsView key="transactions" transactions={transactions} />}
+          {activeTab === 'admin' && <AdminView key="admin" transactions={transactions} confirmTransaction={confirmTransaction} />}
         </AnimatePresence>
       </main>
     </div>
@@ -159,6 +229,8 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
   const [modalStep, setModalStep] = useState<1 | 2>(1);
   const [formData, setFormData] = useState({ name: '', contact: '', qty: 1 });
   const [errorText, setErrorText] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const categories = Array.from(new Set(products.map(p => p.category)));
 
@@ -166,6 +238,7 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
     setSelectedProduct(product);
     setFormData({ name: '', contact: '', qty: product.minOrder || 1 });
     setErrorText('');
+    setFile(null);
     setModalStep(1);
   };
 
@@ -183,8 +256,41 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
     setModalStep(2);
   };
 
-  const handleFinishPayment = () => {
+  const handleFinishPayment = async () => {
     if (!selectedProduct) return;
+    if (!file) {
+      setErrorText("Mohon upload bukti transfer terlebih dahulu.");
+      return;
+    }
+
+    setIsUploading(true);
+    let proof_url = '';
+    
+    if (supabase) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('payments')
+          .upload(filePath, file);
+          
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from('payments')
+          .getPublicUrl(filePath);
+          
+        proof_url = data.publicUrl;
+      } catch (err) {
+        console.error("Upload failed", err);
+        setErrorText("Gagal upload gambar, silahkan coba lagi. Pastikan bucket 'payments' sudah dibuat dan public.");
+        setIsUploading(false);
+        return;
+      }
+    }
+
     const total = selectedProduct.price * formData.qty;
     const newTrx: Transaction = {
       id: `TRX-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -193,10 +299,13 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
       qty: formData.qty,
       amount: `Rp ${total.toLocaleString('id-ID')}`,
       date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
-      status: 'Sukses'
+      status: 'Pending',
+      proof_url
     };
     addTransaction(newTrx);
     setSelectedProduct(null);
+    setFile(null);
+    setIsUploading(false);
     setActiveTab('transactions');
   };
 
@@ -345,17 +454,34 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
                     </p>
                   </div>
 
+                  <div className="w-full mb-6 relative">
+                    <label className="block text-sm text-zinc-400 mb-2">Upload Bukti Transfer</label>
+                    <input 
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        setFile(e.target.files?.[0] || null);
+                        setErrorText('');
+                      }}
+                      className="w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-cyan-500/10 file:text-cyan-400 hover:file:bg-cyan-500/20 transition-all cursor-pointer"
+                    />
+                  </div>
+
+                  {errorText && <p className="text-red-400 text-sm mt-2 mb-4">{errorText}</p>}
+
                   <motion.button
                     onClick={handleFinishPayment}
+                    disabled={isUploading}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold flex items-center justify-center gap-2"
+                    className={`w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold flex items-center justify-center gap-2 ${isUploading ? 'opacity-70 cursor-not-allowed' : ''}`}
                   >
-                    Selesai
+                    {isUploading ? 'Mengunggah...' : 'Selesai & Konfirmasi'}
                   </motion.button>
                   <button 
                     onClick={() => setModalStep(1)}
-                    className="mt-4 text-sm text-zinc-500 hover:text-white"
+                    disabled={isUploading}
+                    className="mt-4 text-sm text-zinc-500 hover:text-white disabled:opacity-50"
                   >
                     Kembali
                   </button>
@@ -396,6 +522,7 @@ function TransactionsView({ transactions }: { transactions: Transaction[] }) {
                 <th className="p-4 text-sm font-medium text-zinc-400">JENIS PRODUK</th>
                 <th className="p-4 text-sm font-medium text-zinc-400">JUMLAH PRODUK</th>
                 <th className="p-4 text-sm font-medium text-zinc-400">TOTAL HARGA</th>
+                <th className="p-4 text-sm font-medium text-zinc-400">STATUS</th>
               </tr>
             </thead>
             <tbody>
@@ -411,6 +538,15 @@ function TransactionsView({ transactions }: { transactions: Transaction[] }) {
                   <td className="p-4 text-sm text-zinc-300">{trx.product}</td>
                   <td className="p-4 text-sm font-mono text-zinc-300">{trx.qty}</td>
                   <td className="p-4 text-sm text-cyan-400 font-medium">{trx.amount}</td>
+                  <td className="p-4 text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      trx.status === 'Sukses' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {trx.status || 'Pending'}
+                    </span>
+                  </td>
                 </motion.tr>
               ))}
               {transactions.length === 0 && (
@@ -426,4 +562,87 @@ function TransactionsView({ transactions }: { transactions: Transaction[] }) {
       </div>
     </motion.div>
   );
+}
+
+function AdminView({ transactions, confirmTransaction }: { transactions: Transaction[], confirmTransaction: (id: string) => void }) {
+  const [pin, setPin] = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleLogin = () => {
+    if (pin === '123456') setIsAuthenticated(true);
+    else setError('PIN Salah!');
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center">
+        <h2 className="text-2xl font-bold mb-6">Login Admin</h2>
+        <input 
+          type="password" 
+          value={pin}
+          onChange={e => setPin(e.target.value)}
+          className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white mb-4 focus:outline-none focus:border-cyan-500/50 text-center tracking-[1em]"
+          placeholder="PIN"
+        />
+        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+        <button onClick={handleLogin} className="w-full py-3 rounded-xl bg-cyan-500 text-black font-semibold">
+          Masuk
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto">
+       <h2 className="text-3xl font-bold mb-8">Panel Admin</h2>
+       <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
+         <table className="w-full text-left border-collapse min-w-[800px]">
+           <thead>
+             <tr className="border-b border-white/10 bg-black/20">
+               <th className="p-4 text-sm text-zinc-400">ID</th>
+               <th className="p-4 text-sm text-zinc-400">NAMA & PRODUK</th>
+               <th className="p-4 text-sm text-zinc-400">BUKTI</th>
+               <th className="p-4 text-sm text-zinc-400">STATUS</th>
+               <th className="p-4 text-sm text-zinc-400">AKSI</th>
+             </tr>
+           </thead>
+           <tbody>
+             {transactions.map(trx => (
+               <tr key={trx.id} className="border-b border-white/5">
+                 <td className="p-4 text-sm font-mono text-xs">{trx.id}</td>
+                 <td className="p-4 text-sm">
+                    <strong>{trx.name}</strong><br/>
+                    <span className="text-zinc-500">{trx.qty}x {trx.product} - {trx.amount}</span>
+                 </td>
+                 <td className="p-4 text-sm">
+                   {trx.proof_url ? (
+                     <a href={trx.proof_url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">Lihat Bukti</a>
+                   ) : (
+                     <span className="text-zinc-600">-</span>
+                   )}
+                 </td>
+                 <td className="p-4 text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      trx.status === 'Sukses' 
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                    }`}>
+                      {trx.status || 'Pending'}
+                    </span>
+                 </td>
+                 <td className="p-4 text-sm">
+                   {trx.status !== 'Sukses' && (
+                     <button onClick={() => confirmTransaction(trx.id)} className="bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-500/40 transition-colors">
+                       Sukseskan
+                     </button>
+                   )}
+                 </td>
+               </tr>
+             ))}
+           </tbody>
+         </table>
+       </div>
+    </div>
+  )
 }
