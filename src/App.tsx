@@ -585,85 +585,85 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
     else setError('Password Salah!');
   };
 
-  if (!isAuthenticated) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -20 }}
-        className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center"
-      >
-        <h2 className="text-2xl font-bold mb-6">Login Admin</h2>
-        <input 
-          type="password" 
-          value={pin}
-          onChange={e => setPin(e.target.value)}
-          className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white mb-4 focus:outline-none focus:border-cyan-500/50 text-center tracking-widest"
-          placeholder="Password"
-        />
-        {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-        <button onClick={handleLogin} className="w-full py-3 rounded-xl bg-cyan-500 text-black font-semibold">
-          Masuk
-        </button>
-      </motion.div>
-    );
-  }
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-6xl mx-auto"
+      className="max-w-6xl mx-auto w-full"
     >
-       <h2 className="text-3xl font-bold mb-8">Panel Admin</h2>
-       <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
-         <table className="w-full text-left border-collapse min-w-[800px]">
-           <thead>
-             <tr className="border-b border-white/10 bg-black/20">
-               <th className="p-4 text-sm text-zinc-400">ID</th>
-               <th className="p-4 text-sm text-zinc-400">NAMA & PRODUK</th>
-               <th className="p-4 text-sm text-zinc-400">BUKTI</th>
-               <th className="p-4 text-sm text-zinc-400">STATUS</th>
-               <th className="p-4 text-sm text-zinc-400">AKSI</th>
-             </tr>
-           </thead>
-           <tbody>
-             {transactions.map(trx => (
-               <tr key={trx.id} className="border-b border-white/5">
-                 <td className="p-4 text-sm font-mono text-xs">{trx.id}</td>
-                 <td className="p-4 text-sm">
-                    <strong>{trx.name}</strong><br/>
-                    <span className="text-zinc-500">{trx.qty}x {trx.product} - {trx.amount}</span>
-                 </td>
-                 <td className="p-4 text-sm">
-                   {trx.proof_url ? (
-                     <a href={trx.proof_url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">Lihat Bukti</a>
-                   ) : (
-                     <span className="text-zinc-600">-</span>
-                   )}
-                 </td>
-                 <td className="p-4 text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      trx.status === 'Sukses' 
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}>
-                      {trx.status || 'Pending'}
-                    </span>
-                 </td>
-                 <td className="p-4 text-sm">
-                   {trx.status !== 'Sukses' && (
-                     <button onClick={() => confirmTransaction(trx.id)} className="bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-500/40 transition-colors">
-                       Sukseskan
-                     </button>
-                   )}
-                 </td>
-               </tr>
-             ))}
-           </tbody>
-         </table>
-       </div>
+      {!isAuthenticated ? (
+        <div className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center">
+          <h2 className="text-2xl font-bold mb-6">Login Admin</h2>
+          <input 
+            type="password" 
+            value={pin}
+            onChange={e => setPin(e.target.value)}
+            className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white mb-4 focus:outline-none focus:border-cyan-500/50 text-center tracking-widest"
+            placeholder="Password"
+          />
+          {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
+          <button onClick={handleLogin} className="w-full py-3 rounded-xl bg-cyan-500 text-black font-semibold">
+            Masuk
+          </button>
+        </div>
+      ) : (
+        <div>
+           <h2 className="text-3xl font-bold mb-8">Panel Admin</h2>
+           <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
+             <table className="w-full text-left border-collapse min-w-[800px]">
+               <thead>
+                 <tr className="border-b border-white/10 bg-black/20">
+                   <th className="p-4 text-sm text-zinc-400">ID</th>
+                   <th className="p-4 text-sm text-zinc-400">NAMA & PRODUK</th>
+                   <th className="p-4 text-sm text-zinc-400">BUKTI</th>
+                   <th className="p-4 text-sm text-zinc-400">STATUS</th>
+                   <th className="p-4 text-sm text-zinc-400">AKSI</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {transactions.map(trx => (
+                   <tr key={trx.id} className="border-b border-white/5 hover:bg-white/5">
+                     <td className="p-4 text-sm font-mono text-xs">{trx.id}</td>
+                     <td className="p-4 text-sm">
+                        <strong>{trx.name}</strong><br/>
+                        <span className="text-zinc-500">{trx.qty}x {trx.product} - {trx.amount}</span>
+                     </td>
+                     <td className="p-4 text-sm">
+                       {trx.proof_url ? (
+                         <a href={trx.proof_url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">Lihat Bukti</a>
+                       ) : (
+                         <span className="text-zinc-600">-</span>
+                       )}
+                     </td>
+                     <td className="p-4 text-sm">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          trx.status === 'Sukses' 
+                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        }`}>
+                          {trx.status || 'Pending'}
+                        </span>
+                     </td>
+                     <td className="p-4 text-sm">
+                       {trx.status !== 'Sukses' && (
+                         <button onClick={() => confirmTransaction(trx.id)} className="bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-500/40 transition-colors">
+                           Sukseskan
+                         </button>
+                       )}
+                     </td>
+                   </tr>
+                 ))}
+                 {transactions.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-zinc-500">Belum ada transaksi pending.</td>
+                    </tr>
+                 )}
+               </tbody>
+             </table>
+           </div>
+        </div>
+      )}
     </motion.div>
   )
 }
