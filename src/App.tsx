@@ -1,22 +1,51 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShoppingCart, Search, Activity, Zap, Shield, Cpu, ChevronRight, CheckCircle2, Clock } from 'lucide-react';
+import { ShoppingCart, Activity, Zap, ChevronRight, X } from 'lucide-react';
+import QrisImg from './assets/qrisss.png';
 
-// Mock Data
-const products = [
-  { id: 1, name: 'Lisensi Windows 11 Pro', price: 'Rp 150.000', features: ['Lifetime Activation', 'Original Key', 'Instant Delivery'], icon: Cpu },
-  { id: 2, name: 'Spotify Premium 1 Bulan', price: 'Rp 35.000', features: ['Private Account', 'Full Garansi', 'Anti Banned'], icon: Zap },
-  { id: 3, name: 'Netflix Premium UHD', price: 'Rp 45.000', features: ['1 Profile 1 User', 'Resolusi 4K UHD', 'Garansi 30 Hari'], icon: Shield },
+type Product = {
+  id: number;
+  name: string;
+  price: number;
+  priceStr: string;
+  category: string;
+  minOrder?: number;
+};
+
+const products: Product[] = [
+  { id: 1, name: 'Netflix private 1 bulan', price: 70000, priceStr: 'Rp 70.000', category: 'NETFLIX' },
+  { id: 2, name: 'Netflix private 7 hari', price: 40000, priceStr: 'Rp 40.000', category: 'NETFLIX' },
+  { id: 3, name: 'Capcut head 35 hari', price: 45000, priceStr: 'Rp 45.000', category: 'CAPCUT' },
+  { id: 4, name: 'Wetv 1bulan', price: 20000, priceStr: 'Rp 20.000', category: 'SPOTIFY' },
+  { id: 5, name: '2.000 followers', price: 65000, priceStr: 'Rp 65.000', category: 'AKUN INSTAGRAM (AKTIF)' },
+  { id: 6, name: '1.000 followers', price: 45000, priceStr: 'Rp 45.000', category: 'AKUN INSTAGRAM (AKTIF)' },
+  { id: 7, name: '2.000 followers ', price: 95000, priceStr: 'Rp 95.000', category: 'AKUN TIKTOK (AKTIF)' },
+  { id: 8, name: '1.000 followers ', price: 65000, priceStr: 'Rp 65.000', category: 'AKUN TIKTOK (AKTIF)' },
+  { id: 9, name: 'FRESH', price: 2500, priceStr: 'Rp 2.500', category: 'AKUN GMAIL', minOrder: 20 },
+  { id: 10, name: 'YT PREMIUM', price: 3000, priceStr: 'Rp 3.000', category: 'AKUN GMAIL', minOrder: 15 },
+  { id: 11, name: 'BEKAS', price: 1200, priceStr: 'Rp 1.200', category: 'AKUN GMAIL', minOrder: 33 },
+  { id: 12, name: 'GEMINI', price: 3500, priceStr: 'Rp 3.500', category: 'AKUN GMAIL', minOrder: 13 },
 ];
 
-const mockTransactions = [
-  { id: 'TRX-99281', product: 'Spotify Premium 1 Bulan', date: '10 Mar 2026', status: 'Sukses', amount: 'Rp 35.000' },
-  { id: 'TRX-99280', product: 'Lisensi Windows 11 Pro', date: '09 Mar 2026', status: 'Pending', amount: 'Rp 150.000' },
-  { id: 'TRX-99279', product: 'Netflix Premium UHD', date: '08 Mar 2026', status: 'Sukses', amount: 'Rp 45.000' },
-];
+export type Transaction = {
+  id: string;
+  name: string;
+  product: string;
+  qty: number;
+  amount: string;
+  date: string;
+  status: string;
+};
+
+const initialTransactions: Transaction[] = [];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home');
+  const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
+
+  const addTransaction = (trx: Transaction) => {
+    setTransactions([trx, ...transactions]);
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 font-sans relative overflow-hidden">
@@ -37,16 +66,15 @@ export default function App() {
               <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-950" />
             </div>
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 glow-text">
-              Wijay Store
+              Jurji Store
             </span>
           </motion.div>
 
           <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto w-full sm:w-auto justify-center sm:justify-end pb-1 sm:pb-0 hide-scrollbar">
             {[
               { id: 'home', label: 'Beranda' },
-              { id: 'pricing', label: 'Harga' },
-              { id: 'check', label: 'Cek Penjualan' },
-              { id: 'transactions', label: 'Transaksi' },
+              { id: 'pricing', label: 'Produk' },
+              { id: 'transactions', label: 'Riwayat Pembelian' },
             ].map((item) => (
               <motion.button
                 key={item.id}
@@ -75,9 +103,8 @@ export default function App() {
       <main className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 pt-32 pb-20 min-h-screen">
         <AnimatePresence mode="wait">
           {activeTab === 'home' && <HomeView key="home" setActiveTab={setActiveTab} />}
-          {activeTab === 'pricing' && <PricingView key="pricing" />}
-          {activeTab === 'check' && <CheckSalesView key="check" />}
-          {activeTab === 'transactions' && <TransactionsView key="transactions" />}
+          {activeTab === 'pricing' && <PricingView key="pricing" addTransaction={addTransaction} setActiveTab={setActiveTab} />}
+          {activeTab === 'transactions' && <TransactionsView key="transactions" transactions={transactions} />}
         </AnimatePresence>
       </main>
     </div>
@@ -110,7 +137,7 @@ function HomeView({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
       </h1>
       
       <p className="text-zinc-400 text-base sm:text-lg md:text-xl max-w-2xl mb-10 px-4">
-        Wijay Store menyediakan berbagai macam lisensi, akun premium, dan kebutuhan digital lainnya dengan proses instan dan aman.
+        Jurji Store menyediakan berbagai macam lisensi, akun premium, dan kebutuhan digital lainnya dengan proses instan dan aman.
       </p>
       
       <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto px-4 sm:px-0">
@@ -122,94 +149,55 @@ function HomeView({ setActiveTab }: { setActiveTab: (tab: string) => void }) {
         >
           Lihat Produk <ChevronRight className="w-5 h-5" />
         </motion.button>
-        <motion.button
-          onClick={() => setActiveTab('check')}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="w-full sm:w-auto px-8 py-4 rounded-full bg-white/5 border border-white/10 text-white font-semibold flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
-        >
-          Cek Pesanan <Search className="w-5 h-5" />
-        </motion.button>
       </div>
     </motion.div>
   );
 }
 
-function PricingView() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="w-full"
-    >
-      <div className="text-center mb-12 sm:mb-16">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Katalog Produk</h2>
-        <p className="text-zinc-400">Pilih produk digital sesuai kebutuhan Anda.</p>
-      </div>
+function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: Transaction) => void, setActiveTab: (tab: string) => void }) {
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [modalStep, setModalStep] = useState<1 | 2>(1);
+  const [formData, setFormData] = useState({ name: '', contact: '', qty: 1 });
+  const [errorText, setErrorText] = useState('');
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
-        {products.map((product, index) => (
-          <motion.div
-            key={product.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            whileHover={{ y: -10 }}
-            className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 backdrop-blur-sm relative group overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            
-            <div className="w-12 h-12 rounded-xl bg-cyan-500/20 flex items-center justify-center text-cyan-400 mb-6 border border-cyan-500/30">
-              <product.icon className="w-6 h-6" />
-            </div>
-            
-            <h3 className="text-xl font-bold mb-2">{product.name}</h3>
-            <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-6">
-              {product.price}
-            </div>
-            
-            <ul className="space-y-3 mb-8">
-              {product.features.map((feature, i) => (
-                <li key={i} className="flex items-center gap-3 text-sm text-zinc-300">
-                  <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-            
-            <motion.button
-              whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(34,211,238,0.3)" }}
-              whileTap={{ scale: 0.98 }}
-              className="w-full py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-cyan-500/20 hover:border-cyan-500/50 hover:text-cyan-400 transition-all font-medium flex items-center justify-center gap-2"
-            >
-              <ShoppingCart className="w-4 h-4" /> Beli Sekarang
-            </motion.button>
-          </motion.div>
-        ))}
-      </div>
-    </motion.div>
-  );
-}
+  const categories = Array.from(new Set(products.map(p => p.category)));
 
-function CheckSalesView() {
-  const [orderId, setOrderId] = useState('');
-  const [isChecking, setIsChecking] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const handleBuyClick = (product: Product) => {
+    setSelectedProduct(product);
+    setFormData({ name: '', contact: '', qty: product.minOrder || 1 });
+    setErrorText('');
+    setModalStep(1);
+  };
 
-  const handleCheck = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!orderId) return;
-    
-    setIsChecking(true);
-    setResult(null);
-    
-    // Simulate API call
-    setTimeout(() => {
-      setIsChecking(false);
-      const found = mockTransactions.find(t => t.id === orderId);
-      setResult(found || { error: 'Pesanan tidak ditemukan. Pastikan ID Transaksi benar.' });
-    }, 1500);
+  const handleNext = () => {
+    if (!formData.name || !formData.contact || !formData.qty) {
+      setErrorText('Mohon lengkapi semua data.');
+      return;
+    }
+    const minQty = selectedProduct?.minOrder || 1;
+    if (formData.qty < minQty) {
+      setErrorText(`Minimal pembelian untuk produk ini adalah ${minQty}.`);
+      return;
+    }
+    setErrorText('');
+    setModalStep(2);
+  };
+
+  const handleFinishPayment = () => {
+    if (!selectedProduct) return;
+    const total = selectedProduct.price * formData.qty;
+    const newTrx: Transaction = {
+      id: \`TRX-\${Math.floor(10000 + Math.random() * 90000)}\`,
+      name: formData.name,
+      product: selectedProduct.name,
+      qty: formData.qty,
+      amount: \`Rp \${total.toLocaleString('id-ID')}\`,
+      date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      status: 'Sukses'
+    };
+    addTransaction(newTrx);
+    setSelectedProduct(null);
+    setActiveTab('transactions');
   };
 
   return (
@@ -217,102 +205,171 @@ function CheckSalesView() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-2xl mx-auto"
+      className="w-full relative"
     >
-      <div className="text-center mb-12">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Cek Status Pesanan</h2>
-        <p className="text-zinc-400">Masukkan ID Transaksi Anda untuk melihat status terbaru.</p>
+      <div className="text-center mb-12 sm:mb-16">
+        <h2 className="text-3xl md:text-4xl font-bold mb-4">Katalog Produk</h2>
+        <p className="text-zinc-400">Pilih produk digital sesuai kebutuhan Anda.</p>
       </div>
 
-      <div className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 sm:p-8 backdrop-blur-sm">
-        <form onSubmit={handleCheck} className="flex flex-col sm:flex-row gap-4 mb-8">
-          <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
-            <input
-              type="text"
-              value={orderId}
-              onChange={(e) => setOrderId(e.target.value)}
-              placeholder="Contoh: TRX-99281"
-              className="w-full bg-black/50 border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/50 transition-all"
-            />
-          </div>
-          <motion.button
-            whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(34,211,238,0.3)" }}
-            whileTap={{ scale: 0.98 }}
-            disabled={isChecking || !orderId}
-            className="px-8 py-4 rounded-xl bg-cyan-500 text-black font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center min-w-[140px]"
-          >
-            {isChecking ? (
+      {categories.map((category) => (
+        <div key={category} className="mb-12">
+          <h3 className="text-2xl font-bold mb-6 text-cyan-400 border-b border-white/10 pb-2">{category}</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            {products.filter(p => p.category === category).map((product, index) => (
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -5 }}
+                className="bg-zinc-900/50 border border-white/10 rounded-2xl p-6 backdrop-blur-sm relative group overflow-hidden flex flex-col"
               >
-                <Clock className="w-5 h-5" />
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                
+                <h4 className="text-xl font-bold mb-2 relative z-10">{product.name}</h4>
+                <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-4 relative z-10">
+                  {product.priceStr}
+                </div>
+                
+                {product.minOrder && (
+                  <p className="text-xs text-amber-400 mb-4 bg-amber-400/10 p-2 rounded-lg border border-amber-400/20 relative z-10">
+                    * Minimal pembelian {product.minOrder}
+                  </p>
+                )}
+                
+                <motion.button
+                  onClick={() => handleBuyClick(product)}
+                  whileHover={{ scale: 1.02, boxShadow: "0 0 15px rgba(34,211,238,0.3)" }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full mt-auto py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-cyan-500/20 hover:border-cyan-500/50 hover:text-cyan-400 transition-all font-medium flex items-center justify-center gap-2 relative z-10"
+                >
+                  <ShoppingCart className="w-4 h-4" /> Beli Sekarang
+                </motion.button>
               </motion.div>
-            ) : (
-              'Cek Sekarang'
-            )}
-          </motion.button>
-        </form>
+            ))}
+          </div>
+        </div>
+      ))}
 
-        <AnimatePresence mode="wait">
-          {result && !result.error && (
+      {/* Modal Transaction */}
+      <AnimatePresence>
+        {selectedProduct && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          >
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-black/40 border border-white/5 rounded-xl p-6 overflow-hidden"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 border border-white/10 p-6 sm:p-8 rounded-2xl w-full max-w-md relative max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/5">
-                <div>
-                  <p className="text-sm text-zinc-500 mb-1">ID Transaksi</p>
-                  <p className="font-mono text-lg text-cyan-400">{result.id}</p>
-                </div>
-                <div className="sm:text-right">
-                  <p className="text-sm text-zinc-500 mb-1">Status</p>
-                  <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${
-                    result.status === 'Sukses' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                  }`}>
-                    {result.status === 'Sukses' ? <CheckCircle2 className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
-                    {result.status}
-                  </div>
-                </div>
-              </div>
+              <button 
+                onClick={() => setSelectedProduct(null)} 
+                className="absolute top-4 right-4 text-zinc-400 hover:text-white bg-black/50 p-1 rounded-full aspect-square flex items-center justify-center"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <h3 className="text-2xl font-bold mb-6 pr-8 text-cyan-400">{selectedProduct.category}</h3>
               
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between gap-1">
-                  <span className="text-zinc-400">Produk</span>
-                  <span className="font-medium">{result.product}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between gap-1">
-                  <span className="text-zinc-400">Tanggal</span>
-                  <span className="font-medium">{result.date}</span>
-                </div>
-                <div className="flex flex-col sm:flex-row justify-between gap-1 pt-4 border-t border-white/5">
-                  <span className="text-zinc-400">Total Pembayaran</span>
-                  <span className="font-bold text-lg text-cyan-400">{result.amount}</span>
-                </div>
-              </div>
-            </motion.div>
-          )}
+              {modalStep === 1 && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-black/30 rounded-xl border border-white/5 mb-6">
+                    <p className="font-medium">{selectedProduct.name}</p>
+                    <p className="text-cyan-400 font-bold">{selectedProduct.priceStr}</p>
+                  </div>
 
-          {result && result.error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center text-red-400 overflow-hidden"
-            >
-              {result.error}
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Nama</label>
+                    <input 
+                      type="text" 
+                      value={formData.name}
+                      onChange={(e) => setFormData({...formData, name: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50" 
+                      placeholder="Masukkan nama anda" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Nomor Telepon / Sosial Media</label>
+                    <input 
+                      type="text" 
+                      value={formData.contact}
+                      onChange={(e) => setFormData({...formData, contact: e.target.value})}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50" 
+                      placeholder="Contoh: 08123456789" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-zinc-400 mb-1">Jumlah Produk</label>
+                    <input 
+                      type="number" 
+                      min={selectedProduct.minOrder || 1}
+                      value={formData.qty}
+                      onChange={(e) => setFormData({...formData, qty: parseInt(e.target.value) || 0})}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-zinc-600 focus:outline-none focus:border-cyan-500/50" 
+                    />
+                    {selectedProduct.minOrder && (
+                      <p className="text-xs text-amber-400 mt-1">Minimal pembelian {selectedProduct.minOrder}</p>
+                    )}
+                  </div>
+                  
+                  {errorText && <p className="text-red-400 text-sm mt-2">{errorText}</p>}
+
+                  <motion.button
+                    onClick={handleNext}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-3 mt-6 rounded-xl bg-cyan-500 text-black font-semibold"
+                  >
+                    Next
+                  </motion.button>
+                </div>
+              )}
+
+              {modalStep === 2 && (
+                <div className="flex flex-col items-center">
+                  <p className="text-center text-zinc-400 mb-4 text-sm">Silakan scan QRIS di bawah ini untuk melakukan pembayaran.</p>
+                  
+                  <div className="bg-white p-3 rounded-2xl mb-6 flex justify-center w-full max-w-[240px]">
+                    <img src={QrisImg} alt="QRIS" className="w-full h-auto object-contain rounded-lg" />
+                  </div>
+                  
+                  <div className="text-center mb-6 w-full p-4 bg-black/30 rounded-xl border border-white/5">
+                    <p className="text-sm text-zinc-400 mb-1">Total yang harus dibayar</p>
+                    <p className="text-3xl font-bold text-cyan-400">
+                      Rp {(selectedProduct.price * formData.qty).toLocaleString('id-ID')}
+                    </p>
+                  </div>
+
+                  <motion.button
+                    onClick={handleFinishPayment}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="w-full py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold flex items-center justify-center gap-2"
+                  >
+                    Selesai
+                  </motion.button>
+                  <button 
+                    onClick={() => setModalStep(1)}
+                    className="mt-4 text-sm text-zinc-500 hover:text-white"
+                  >
+                    Kembali
+                  </button>
+                </div>
+              )}
             </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function TransactionsView() {
+function TransactionsView({ transactions }: { transactions: Transaction[] }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -322,8 +379,8 @@ function TransactionsView() {
     >
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-bold mb-2">Riwayat Transaksi</h2>
-          <p className="text-zinc-400">Daftar transaksi terbaru di Wijay Store.</p>
+          <h2 className="text-3xl font-bold mb-2">Riwayat Pembelian</h2>
+          <p className="text-zinc-400">Daftar pembelian yang dilakukan.</p>
         </div>
         <div className="hidden sm:flex w-12 h-12 rounded-xl bg-white/5 border border-white/10 items-center justify-center">
           <Activity className="w-6 h-6 text-cyan-400" />
@@ -335,35 +392,34 @@ function TransactionsView() {
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="border-b border-white/10 bg-black/20">
-                <th className="p-4 text-sm font-medium text-zinc-400">ID Transaksi</th>
-                <th className="p-4 text-sm font-medium text-zinc-400">Produk</th>
-                <th className="p-4 text-sm font-medium text-zinc-400">Tanggal</th>
-                <th className="p-4 text-sm font-medium text-zinc-400">Jumlah</th>
-                <th className="p-4 text-sm font-medium text-zinc-400">Status</th>
+                <th className="p-4 text-sm font-medium text-zinc-400">NAMA USER</th>
+                <th className="p-4 text-sm font-medium text-zinc-400">JENIS PRODUK</th>
+                <th className="p-4 text-sm font-medium text-zinc-400">JUMLAH PRODUK</th>
+                <th className="p-4 text-sm font-medium text-zinc-400">TOTAL HARGA</th>
               </tr>
             </thead>
             <tbody>
-              {mockTransactions.map((trx, i) => (
+              {transactions.map((trx, i) => (
                 <motion.tr 
-                  key={trx.id}
+                  key={trx.id + i}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.05 }}
                   className="border-b border-white/5 hover:bg-white/5 transition-colors"
                 >
-                  <td className="p-4 font-mono text-sm text-cyan-400">{trx.id}</td>
-                  <td className="p-4 text-sm font-medium">{trx.product}</td>
-                  <td className="p-4 text-sm text-zinc-400">{trx.date}</td>
-                  <td className="p-4 text-sm">{trx.amount}</td>
-                  <td className="p-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                      trx.status === 'Sukses' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                    }`}>
-                      {trx.status}
-                    </span>
-                  </td>
+                  <td className="p-4 text-sm font-medium">{trx.name}</td>
+                  <td className="p-4 text-sm text-zinc-300">{trx.product}</td>
+                  <td className="p-4 text-sm font-mono text-zinc-300">{trx.qty}</td>
+                  <td className="p-4 text-sm text-cyan-400 font-medium">{trx.amount}</td>
                 </motion.tr>
               ))}
+              {transactions.length === 0 && (
+                 <tr>
+                   <td colSpan={4} className="p-8 text-center text-zinc-500">
+                     Belum ada riwayat pembelian.
+                   </td>
+                 </tr>
+              )}
             </tbody>
           </table>
         </div>
