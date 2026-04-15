@@ -18,7 +18,9 @@ const products: Product[] = [
   { id: 1, name: 'Netflix private 1 bulan', price: 70000, priceStr: 'Rp 70.000', category: 'NETFLIX' },
   { id: 2, name: 'Netflix private 7 hari', price: 40000, priceStr: 'Rp 40.000', category: 'NETFLIX' },
   { id: 3, name: 'Capcut head 35 hari', price: 45000, priceStr: 'Rp 45.000', category: 'CAPCUT' },
-  { id: 4, name: 'Wetv 1bulan', price: 20000, priceStr: 'Rp 20.000', category: 'SPOTIFY' },
+  { id: 4, name: 'Spotify premium 1 bulan', price: 20000, priceStr: 'Rp 20.000', category: 'SPOTIFY' },
+  { id: 13, name: 'Spotify premium 2 bulan', price: 35000, priceStr: 'Rp 35.000', category: 'SPOTIFY' },
+  { id: 14, name: 'Wetv 1 bulan', price: 20000, priceStr: 'Rp 20.000', category: 'WETV' },
   { id: 5, name: '2.000 followers', price: 65000, priceStr: 'Rp 65.000', category: 'AKUN INSTAGRAM (AKTIF)' },
   { id: 6, name: '1.000 followers', price: 45000, priceStr: 'Rp 45.000', category: 'AKUN INSTAGRAM (AKTIF)' },
   { id: 7, name: '2.000 followers ', price: 95000, priceStr: 'Rp 95.000', category: 'AKUN TIKTOK (AKTIF)' },
@@ -123,6 +125,25 @@ export default function App() {
     if (newCount >= 5) {
       setActiveTab('admin');
       setSecretCount(0);
+    }
+  };
+
+  const confirmTransaction = async (id: string) => {
+    // Update state local
+    setTransactions(prev => prev.map(trx => trx.id === id ? { ...trx, status: 'Sukses' } : trx));
+    
+    // Update ke Supabase
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('transactions')
+          .update({ status: 'Sukses' })
+          .eq('id', id);
+          
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to update transaction status:', err);
+      }
     }
   };
 
