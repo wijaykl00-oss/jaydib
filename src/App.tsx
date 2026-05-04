@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShoppingCart, Activity, Zap, ChevronRight, X } from 'lucide-react';
-import QrisImg from '../foto qris/qrisss.jpeg';
+import QrisImg from '../foto qris/jay stores.jpeg';
 import { supabase } from './supabase';
 import emailjs from '@emailjs/browser';
 
