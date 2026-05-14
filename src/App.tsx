@@ -70,47 +70,64 @@ export default function App() {
     } catch (err) {
       console.error('Error fetching transactions:', err);
     } finally {
+      // Gabungkan dengan Local Transactions jika ada
+      const localTrxs = JSON.parse(localStorage.getItem('local_transactions') || '[]');
+      setTransactions(prev => {
+        const all = [...localTrxs, ...prev];
+        // Remove duplicates by ID
+        return all.filter((v, i, a) => a.findIndex(t => t.id === v.id) === i);
+      });
       setIsLoading(false);
     }
   };
 
   const addTransaction = async (trx: Transaction) => {
+    // 1. Simpan ke Local Storage (Backup)
+    const localTrxs = JSON.parse(localStorage.getItem('local_transactions') || '[]');
+    localStorage.setItem('local_transactions', JSON.stringify([trx, ...localTrxs]));
+    
+    // 2. Update State
     setTransactions([trx, ...transactions]);
 
-    // Simpan ke Supabase (jika sudah disetting)
+    // 3. Simpan ke Supabase
     if (supabase) {
       try {
-        await supabase.from('transactions').insert([trx]);
+        // HACK: Karena kolom proof_url belum ada di DB, kita tempel di nama
+        const trxToSave = { 
+          ...trx,
+          name: trx.proof_url ? `${trx.name} [Bukti: ${trx.proof_url}]` : trx.name
+        };
+        // Hapus proof_url agar tidak error PGRST204
+        delete (trxToSave as any).proof_url;
+        
+        const { error } = await supabase.from('transactions').insert([trxToSave]);
+        if (error) throw error;
       } catch (err) {
-        console.error('Failed to save tracking info to database:', err);
+        console.error('Failed to save to Supabase:', err);
+        // Tetap lanjut ke WA meskipun gagal simpan ke DB (karena sudah ada di local storage)
       }
     }
 
-    // Auto WhatsApp
-    const waNumber = '6285124935573'; // GANTI dengan nomor WA Anda
+    // 4. Auto WhatsApp
+    const waNumber = '6285124935573';
     const waMessage = `Halo Jurji Store, saya telah melakukan pembayaran.%0A%0A*Detail Pesanan:*%0A- ID: ${trx.id}%0A- Nama: ${trx.name}%0A- Produk: ${trx.product}%0A- Jumlah: ${trx.qty}%0A- Total: ${trx.amount}%0A%0A*Bukti:* ${trx.proof_url ? trx.proof_url : 'Telah diupload di website'}`;
     window.open(`https://wa.me/${waNumber}?text=${waMessage}`, '_blank');
 
-    // Auto EmailJS (jika sudah disetting di .env)
+    // 5. Auto EmailJS
     const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
     const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
     const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
     if (serviceId && templateId && publicKey) {
       try {
-        await emailjs.send(
-          serviceId,
-          templateId,
-          {
-            to_email: 'ak123k09@gmail.com',
-            trx_id: trx.id,
-            trx_name: trx.name,
-            trx_product: trx.product,
-            trx_qty: trx.qty,
-            trx_amount: trx.amount,
-          },
-          publicKey
-        );
+        await emailjs.send(serviceId, templateId, {
+          to_email: 'ak123k09@gmail.com',
+          trx_id: trx.id,
+          trx_name: trx.name,
+          trx_product: trx.product,
+          trx_qty: trx.qty,
+          trx_amount: trx.amount,
+        }, publicKey);
       } catch (err) {
         console.error('Failed to send email:', err);
       }
@@ -510,6 +527,7 @@ function PricingView({ addTransaction, setActiveTab }: { addTransaction: (trx: T
                   >
                     {isUploading ? 'Mengunggah...' : 'Selesai & Konfirmasi'}
                   </motion.button>
+
                   <button 
                     onClick={() => setModalStep(1)}
                     disabled={isUploading}
@@ -600,18 +618,44 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
   const [pin, setPin] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState('');
+  const [storageFiles, setStorageFiles] = useState<any[]>([]);
+  const [isFetchingStorage, setIsFetchingStorage] = useState(false);
 
   const handleLogin = () => {
     if (pin === 'Zerotoher0') setIsAuthenticated(true);
     else setError('Password Salah!');
   };
 
+  const fetchStorageFiles = async () => {
+    if (!supabase) return;
+    try {
+      setIsFetchingStorage(true);
+      const { data, error } = await supabase.storage.from('payments').list('receipts', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' },
+      });
+      if (error) throw error;
+      setStorageFiles(data || []);
+    } catch (err) {
+      console.error('Failed to fetch storage files:', err);
+    } finally {
+      setIsFetchingStorage(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchStorageFiles();
+    }
+  }, [isAuthenticated]);
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -20 }}
-      className="max-w-6xl mx-auto w-full"
+      className="max-w-6xl mx-auto w-full space-y-12"
     >
       {!isAuthenticated ? (
         <div className="max-w-md mx-auto mt-20 p-8 bg-zinc-900/50 border border-white/10 rounded-2xl backdrop-blur-sm text-center">
@@ -629,61 +673,108 @@ function AdminView({ transactions, confirmTransaction }: { transactions: Transac
           </button>
         </div>
       ) : (
-        <div>
-           <h2 className="text-3xl font-bold mb-8">Panel Admin</h2>
-           <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
-             <table className="w-full text-left border-collapse min-w-[800px]">
-               <thead>
-                 <tr className="border-b border-white/10 bg-black/20">
-                   <th className="p-4 text-sm text-zinc-400">ID</th>
-                   <th className="p-4 text-sm text-zinc-400">NAMA & PRODUK</th>
-                   <th className="p-4 text-sm text-zinc-400">BUKTI</th>
-                   <th className="p-4 text-sm text-zinc-400">STATUS</th>
-                   <th className="p-4 text-sm text-zinc-400">AKSI</th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {transactions.map(trx => (
-                   <tr key={trx.id} className="border-b border-white/5 hover:bg-white/5">
-                     <td className="p-4 text-sm font-mono text-xs">{trx.id}</td>
-                     <td className="p-4 text-sm">
+        <>
+          <div>
+            <h2 className="text-3xl font-bold mb-8">Panel Admin - Transaksi</h2>
+            <div className="overflow-x-auto bg-zinc-900/50 border border-white/10 rounded-2xl p-4">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="border-b border-white/10 bg-black/20">
+                    <th className="p-4 text-sm text-zinc-400">ID</th>
+                    <th className="p-4 text-sm text-zinc-400">NAMA & PRODUK</th>
+                    <th className="p-4 text-sm text-zinc-400">BUKTI</th>
+                    <th className="p-4 text-sm text-zinc-400">STATUS</th>
+                    <th className="p-4 text-sm text-zinc-400">AKSI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map(trx => (
+                    <tr key={trx.id} className="border-b border-white/5 hover:bg-white/5">
+                      <td className="p-4 text-sm font-mono text-xs">{trx.id}</td>
+                      <td className="p-4 text-sm">
                         <strong>{trx.name}</strong><br/>
                         <span className="text-zinc-500">{trx.qty}x {trx.product} - {trx.amount}</span>
-                     </td>
-                     <td className="p-4 text-sm">
-                       {trx.proof_url ? (
-                         <a href={trx.proof_url} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">Lihat Bukti</a>
-                       ) : (
-                         <span className="text-zinc-600">-</span>
-                       )}
-                     </td>
-                     <td className="p-4 text-sm">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          trx.status === 'Sukses' 
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
-                            : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                        }`}>
-                          {trx.status || 'Pending'}
-                        </span>
-                     </td>
-                     <td className="p-4 text-sm">
-                       {trx.status !== 'Sukses' && (
-                         <button onClick={() => confirmTransaction(trx.id)} className="bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-500/40 transition-colors">
-                           Sukseskan
-                         </button>
-                       )}
-                     </td>
-                   </tr>
-                 ))}
-                 {transactions.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="p-8 text-center text-zinc-500">Belum ada transaksi pending.</td>
+                      </td>
+                      <td className="p-4 text-sm">
+                        {trx.proof_url || trx.name.includes('[Bukti:') ? (
+                          <a 
+                            href={trx.proof_url || trx.name.split('[Bukti: ')[1]?.replace(']', '')} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-cyan-400 hover:text-cyan-300 underline"
+                          >
+                            Lihat Bukti
+                          </a>
+                        ) : (
+                          <span className="text-zinc-600">-</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-sm">
+                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                           trx.status === 'Sukses' 
+                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                             : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                         }`}>
+                           {trx.status || 'Pending'}
+                         </span>
+                      </td>
+                      <td className="p-4 text-sm">
+                        {trx.status !== 'Sukses' && (
+                          <button onClick={() => confirmTransaction(trx.id)} className="bg-emerald-500/20 text-emerald-400 px-3 py-2 rounded-lg text-xs font-semibold hover:bg-emerald-500/40 transition-colors">
+                            Sukseskan
+                          </button>
+                        )}
+                      </td>
                     </tr>
-                 )}
-               </tbody>
-             </table>
-           </div>
-        </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-bold">Panel Admin - Storage Receipts</h2>
+              <button 
+                onClick={fetchStorageFiles} 
+                className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm hover:bg-white/10"
+              >
+                Refresh Storage
+              </button>
+            </div>
+            <p className="text-zinc-400 mb-6 text-sm">
+              Gunakan daftar ini untuk melihat bukti transfer yang sudah diupload tapi tidak tercatat di tabel transaksi (karena error sistem sebelumnya).
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              {isFetchingStorage ? (
+                <p className="col-span-full text-center py-10 text-zinc-500">Loading storage...</p>
+              ) : storageFiles.length > 0 ? (
+                storageFiles.map((file) => (
+                  <div key={file.id} className="bg-zinc-900/50 border border-white/10 rounded-xl p-3 flex flex-col items-center">
+                    <div className="w-full aspect-square bg-black/30 rounded-lg mb-3 overflow-hidden flex items-center justify-center">
+                      <img 
+                        src={supabase!.storage.from('payments').getPublicUrl(`receipts/${file.name}`).data.publicUrl} 
+                        className="w-full h-full object-cover"
+                        alt="Receipt" 
+                      />
+                    </div>
+                    <div className="text-[10px] text-zinc-500 truncate w-full text-center mb-2">{file.name}</div>
+                    <a 
+                      href={supabase!.storage.from('payments').getPublicUrl(`receipts/${file.name}`).data.publicUrl} 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-[10px] text-cyan-400 underline"
+                    >
+                      Buka Full
+                    </a>
+                  </div>
+                ))
+              ) : (
+                <p className="col-span-full text-center py-10 text-zinc-500">Storage kosong.</p>
+              )}
+            </div>
+          </div>
+        </>
       )}
     </motion.div>
   )
